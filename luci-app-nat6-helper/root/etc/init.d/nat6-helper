@@ -85,7 +85,7 @@ start()
     fi
 
     #检测IPv6上行接口默认路由网关是否存在，如果默认路由网关不存在，则会写入错误日志并退出脚本
-    if [ -z "$WAN6_GATEWAY" ] ; then
+    if [ -z "$gateway" ] ; then
             logger -t nat6-helper "Fatal error: No IPv6 gateway for $WAN6_INTERFACE found" && exit 1
     fi
 
