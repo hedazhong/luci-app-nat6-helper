@@ -1,4 +1,5 @@
 #!/bin/sh /etc/rc.common
+# NAT6 init script for OpenWrt // Depends on package: kmod-ipt-nat6
 
 START=99
 STOP=10
@@ -6,46 +7,133 @@ STOP=10
 EXTRA_COMMANDS="setLan"
 EXTRA_HELP="set ULA and DHCPv6"
 
-enable=$(uci get nat6-helper.@nat6-helper[0].enabled)
-interface_public=$(uci get nat6-helper.@nat6-helper[0].name)
+enable=$(uci get nat6-helper.@nat6-helper[0].enabled)                                    #插件是否启用
+WAN6_NAME=$(uci get nat6-helper.@nat6-helper[0].name)                                    #选定的IPv6上行接口，默认为wan6
+ULA_PREFIX=$(uci get network.globals.ula_prefix)                                         #IPv6 ULA
 
-interface=$(uci get "network.$interface_public.ifname")             #获取选中的ipv6出口网口
-last_if=$(ip6tables-save -t nat | grep "v6NAT" | awk '{print $4}')  #获取之前设置的出口网口
-gateway=$(ip -6 route | grep "default from 2" | awk '{print $5}')   #获取当前网关
-last_gw=$(ip -6 route | grep "2000::/3" | awk '{print $3}')         #之前的网关地址
-#由于网络变动后网关可能会变，以及用户有可能重新选择出口网口，所以需要先获取之前的网关凑成删除命令
+interface=$(uci get "network.$WAN6_NAME.device" || uci get "network.$WAN6_NAME.ifname")  #获取选中的ipv6接口的物理接口
+last_if=$(ip6tables-save -t nat | grep "v6NAT" | awk '{print $4}')                       #获取之前设置的出口网口
+#gateway=$(ip -6 route | grep "default from 2" | awk '{print $5}')                        #获取当前状态默认IPv6网关
+gateway=$(ip -6 route | grep -i '^default.*via' | grep -i -F "dev $WAN6_INTERFACE" | grep -i -o 'via.*' | cut -d ' ' -f 2 | head -n 1)   #获取网关的更好的写法
+last_gw=$(ip -6 route | grep "2000::/3" | awk '{print $3}')                              #之前由脚本设置的IPv6路由的网关地址
+#网络变动后IPv6网关可能会变，以及用户有可能重新选择ipv6网口，所以需要先获取之前脚本设置的ipv6网关，用于组合出删除旧的路由的命令
 #原先的default via命令有可能会冲突，所以改用nat6脚本中的只路由到公网的ip，即2开头的ip
 
 #一键设置函数
 setLan() 
 {
-    #一键设置ULA和DHCPv6和ipv6 dns服务器
-    # uci set network.globals.ula_prefix='fd00::/64'
-    # uci set network.wan6.dns='2400:3200::1 2400:da00::6666'
-    uci set network.globals.ula_prefix='fd00:6666:6666::/64'
-    uci set network.wan6.dns='2001:4860:4860::8888 240c::6666'
-    uci set network.wan6.peerdns='0'
-    uci set network.wan6.reqaddress='try'
-    uci set network.wan6.reqprefix='auto'
-	uci set dhcp.lan.dhcpv6='server'
-	uci set dhcp.lan.ra='server'
-	uci set dhcp.lan.ra_default='1'
-	uci set dhcp.lan.ra_management='1'
-    uci delete dhcp.@dnsmasq[0].filter_aaaa
-	uci commit network
-	uci commit dhcp
+    #配置ULA和IPv6-DNS
+    uci set network.globals.ula_prefix='fd00:6666:6666::/64'                        #设置LUA为fd00:6666:6666::/64，可自行修改
+    uci set network.$WAN6_NAME.dns='2001:4860:4860::8888 240c::6666 2400:3200::1'   #设置IPv6接口的DNS，分别为谷歌、中国下一代互联网北京研究中心、阿里的DNS
+    uci set network.$WAN6_NAME.peerdns='0'                                          #禁用IPv6接口的DNS服务器自动配置，即禁用使用广域网ISP提供的DNS服务器
+    uci set network.$WAN6_NAME.reqaddress='try'                                     #为IPv6接口配置IPv6地址，优先使用DHCPv6分配的IPv6地址，如果DHCPv6分配失败，则自动分配IPv6地址
+    uci set network.$WAN6_NAME.reqprefix='auto'                                     #为IPv6接口配置IPv6前缀，优先使用DHCPv6分配的IPv6前缀，如果DHCPv6分配失败，则自动分配IPv6前缀
+
+    #配置LAN接口的DHCPv6
+    uci set dhcp.lan.ra='server'                                                    #将lan接口上的路由通告服务设置为服务器模式
+    uci set dhcp.lan.dhcpv6='server'                                                #将lan接口上的DHCPv6服务设置为服务器模式
+    uci delete dhcp.lan.ndp                                                         #停用NDP代理
+    uci set dhcp.lan.ra_management='1'                                              #有状态+无状态 0-SLAAC 1-SLAAC和DHCPv6 2-DHCPv6
+    uci set dhcp.lan.ra_default='1'                                                 #总是通告默认路由 0-存在默认路由且具有全局IPv6地址 1-存在默认路由但没有全局IPv6地址 2-两者均不满足
+ 
+    #配置LAN接口的IPv6分配长度
+    PREFIX_LEN=$(echo ${ULA_PREFIX} | awk -F/ '{print $2}')                            #提取设定的ULA的前缀长度
+    uci set network.lan.ip6assign="${PREFIX_LEN}"                                   #设置LAN接口的IPv6分配长度，默认ULA时应为64
+
+    #LAN接口强制DHCP
+    uci set dhcp.lan.force='1'                                                      #即使检测到另一台服务器,也要强制使用此网络上的DHCP
+
+    #取消禁止解析IPv6 DNS记录
+    uci delete dhcp.@dnsmasq[0].filter_aaaa                                         #删除dnsmasq DHCPv6服务器的AAAA记录过滤器
+    
+    #要求openwrt中打开防火墙，基本设置和区域中，打开转发。但是，基本设置其实
+    #是default，实测不改动也是可以的；并且安全起见最好不要改变“WAN”区域中转发的配置。
+    #uci set firewall.@defaults[0].forward='ACCEPT'                                  #基本设置中设置允许转发，即没有指定防火墙区域等情况时，默认允许转发
+    #uci set firewall.@zone[1].forward='ACCEPT'                                      #“WAN”区域设置允许转发，@zone[0]对应“LAN”区域、@zone[1]对应“WAN”区域（默认情况）
+
+    #重启网络和DHCP，输出日志
+    uci commit network
+    uci commit dhcp
     /etc/init.d/network restart
+    /etc/init.d/dnsmasq restart
     logger -t nat6-helper "ULA and DHCPv6 have been set"
 }
 
 start()
 {
+    #插件未开启则退出
 	[ $enable = "0" ] && exit 0
-    #设置最新网关
-    ip -6 r add "2000::/3" via $gateway dev $interface > /dev/null 2>&1
 
-    #设置nat6
+    #测试指定的IPv6接口是否已经获得带网关的默认IPv6路由，这条路由为ISP-DHCPv6客户端自动配置，存在该路由说明路由器自身已经获得IPv6访问权
+    PROBE=0
+    COUNT=0
+    MAX_TRIES=15
+    while [ $PROBE -eq 0 ]
+    do
+        if [ $COUNT -gt $MAX_TRIES ]
+        then
+            logger -t nat6-helper "Fatal error: No IPv6 route found (reached retry limit)" && exit 1   #多次尝试后无法获得带网关的默认IPv6路由，失败退出
+        fi
+        COUNT=$((COUNT+1))
+        sleep $COUNT
+        PROBE=$(ip -6 route | grep -i '^default.*via' | grep -i -F "dev $WAN6_INTERFACE" | grep -i -o 'via.*' | wc -l)   #探测是否具有带网关的默认IPv6路由
+    done
+
+    #开始设置nat6
+    logger -t nat6-helper "Start configuring nat6"
+
+    #检测IPv6接口对应的物理接口是否存在，如果物理接口不存在，则会写入错误日志并退出脚本
+    if [ -z "$interface" ] || [ ! -e "/sys/class/net/$interface/" ] ; then
+        logger -t nat6-helper "Fatal error: Lookup of $interface interface failed. Were the default interface names changed?" && exit 1
+    fi
+
+    #检测IPv6上行接口默认路由网关是否存在，如果默认路由网关不存在，则会写入错误日志并退出脚本
+    if [ -z "$WAN6_GATEWAY" ] ; then
+            logger -t nat6-helper "Fatal error: No IPv6 gateway for $WAN6_INTERFACE found" && exit 1
+    fi
+
+    #检测当前ULA是否符合RFC4193定义的ULA前缀范围fd00::/7
+    if [ $(echo "$ULA_PREFIX" | grep -c -E "^((fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
+        logger -t nat6-helper "Fatal error: IPv6 ULA prefix $ULA_PREFIX seems invalid. Please verify that a prefix is set and valid." && exit 1
+    fi
+
+    #设置nat6并添加标识
     ip6tables -t nat -A POSTROUTING -o $interface -m comment --comment "v6NAT" -j MASQUERADE
+
+    #检查上一条命令执行的结果，如果返回值为0，则说明命令执行成功，输出一条日志记录添加IPv6 masquerading规则到
+    #防火墙的情况，否则执行失败，输出一条日志记录添加IPv6 masquerading规则失败的情况，并且终止脚本的执行。
+    if [ $? -eq 0 ] ; then
+        logger -t nat6-helper "Added IPv6 masquerading rule to the firewall (Src: $ULA_PREFIX - Dst: $interface)"
+    else
+        logger -t nat6-helper "Fatal error: Failed to add IPv6 masquerading rule to the firewall (Src: $ULA_PREFIX - Dst: $interface)" && exit 1
+    fi
+
+    #设置目的地为IPv6公网的流量的网关
+    ip -6 route add "2000::/3" via $gateway dev $interface > /dev/null 2>&1
+
+    #检查上一条命令执行的结果，如果返回值为0，则说明添加路由成功，输出一条日志；如果失败，则输出另一条日志，并且终止脚本的执行。
+    if [ $? -eq 0 ] ; then
+            logger -t nat6-helper "Added $gateway to routing table as gateway on $interface for outgoing connections"
+    else
+            logger -t nat6-helper "Error: Failed to add $gateway to routing table as gateway on $interface for outgoing connections"
+    fi
+
+    #设置上行接口的IPv6的无状态地址（接收RA、启用临时IPv6地址），以使用临时IPv6地址来发送出站连接
+    PRIVACY=1
+    if [ $PRIVACY -eq 1 ] ; then
+        echo 2 > "/proc/sys/net/ipv6/conf/$interface/accept_ra"   #IPv上行接口接受路由通告，以便路由器获得上级IPv6网络前缀，生成无状态IPv6地址
+        if [ $? -eq 0 ] ; then
+            logger -t nat6-helper "Accepting router advertisements on $interface even if forwarding is enabled (required for temporary addresses)"
+        else
+            logger -t nat6-helper "Error: Failed to change router advertisements accept policy on $interface (required for temporary addresses)"
+        fi
+        echo 2 > "/proc/sys/net/ipv6/conf/$interface/use_tempaddr"
+        if [ $? -eq 0 ] ; then
+            logger -t nat6-helper "Using temporary addresses for outgoing connections on interface $interface"
+        else
+            logger -t nat6-helper "Error: Failed to enable temporary addresses for outgoing connections on interface $interface"
+        fi
+    fi
 
     #向系统日志输出设置成功信息
     if (ip -6 route | grep -q "2000::/3") && (ip6tables-save -t nat | grep -q "v6NAT");then
@@ -54,8 +142,8 @@ start()
 }
 
 stop()
-{
-    #删除之前在路由表给想访问公网ip的数据包设置的路由器上级网关
+{    
+    #删除之前在路由表为目的地为IPv6公网的流量设置的路由规则
     ip -6 r del "2000::/3" via $last_gw dev $last_if
 
     #删除nat6设置
