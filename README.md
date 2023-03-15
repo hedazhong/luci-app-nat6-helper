@@ -10,3 +10,5 @@ https://zhuanlan.zhihu.com/p/492774540
 https://www.wolai.com/littlenewton/nc13tvkvdazg62S2LNUKgd
 
 https://ywang-wnlo.github.io/posts/51140c4a.html#ipv6
+
+https://openwrt.org/docs/guide-user/base-system/dhcp
