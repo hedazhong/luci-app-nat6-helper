@@ -89,8 +89,8 @@ start()
             logger -t nat6-helper "Fatal error: No IPv6 gateway for $WAN6_INTERFACE found" && exit 1
     fi
 
-    #检测当前ULA是否符合RFC4193定义的ULA前缀范围fd00::/7
-    if [ $(echo "$ULA_PREFIX" | grep -c -E "^((fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
+    #检测当前ULA是否符合RFC4193定义的ULA前缀范围fc00::/7(增加dc00::/7)
+    if [ $(echo "$ULA_PREFIX" | grep -c -E "^((dc[0-9a-fA-F]{2}|dd[0-9a-fA-F]{2}|fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
         logger -t nat6-helper "Fatal error: IPv6 ULA prefix $ULA_PREFIX seems invalid. Please verify that a prefix is set and valid." && exit 1
     fi
 
