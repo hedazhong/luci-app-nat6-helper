@@ -2,7 +2,7 @@
 使用场景：学校分配的ipv6是诸如2001:XXXX:XXXX:XXXX::XXXX:XXXX/128结尾的ip，这样就只有路由器本身能获取到公网ipv6，局域网内的设备无法得到公网ipv6。不过好歹也算是获得了公网ipv6，我们依旧可以通过类似socat等端口转发插件，实现内网穿透等等。但是要让局域网内的设备能够使用ipv6浏览网页，最好的方法还是使用nat6。  
 本插件可以选定获取到公网ipv6的网口做nat6，并且在网络发生变化时自动更新设置。
 
-![show](https://github.com/hedazhong/luci-app-nat6-helper/main/show.png)  
+![show](https://github.com/hedazhong/luci-app-nat6-helper/luci-app-nat6-helper/main/show.png)  
 
 ## 使用方法:
 ### 方法一（推荐）
