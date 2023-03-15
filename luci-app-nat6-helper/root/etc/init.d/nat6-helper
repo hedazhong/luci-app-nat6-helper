@@ -61,9 +61,6 @@ setLan()
 
 start()
 {
-    #插件未开启则退出
-	[ $enable = "0" ] && exit 0
-
     #测试指定的IPv6接口是否已经获得带网关的默认IPv6路由，这条路由为ISP-DHCPv6客户端自动配置，存在该路由说明路由器自身已经获得IPv6访问权
     PROBE=0
     COUNT=0
