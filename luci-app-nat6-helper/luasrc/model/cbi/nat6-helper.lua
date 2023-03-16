@@ -1,36 +1,34 @@
+--简介
 m = Map("nat6-helper", "NAT6 配置助手") 
 m.description = translate("IPv6 路由器做 NAT6，使得路由器下级可以使用 IPv6 协议访问网站。<br />若插件启用失败，请检查路由器是否正常获取到IPv6")
 
--- act_status section
-act = m:section(TypedSection, "act_status", translate("Active Processes"))
-act.anonymous = true
-act.addremove = false
-act.template = "nat6-helper/act_status"
-m:section(SimpleSection).template = "nat6-helper/act_status"
-
--- nat6_status section
-nat6 = m:section(TypedSection, "nat6_status", translate("NAT6 Status"))
-nat6.anonymous = true
-nat6.addremove = false
-nat6.template = "nat6-helper/nat6_status"
+-- 插件启用状态和nat6运行状态
+status = m:section(TypedSection, "nat6_status", translate("NAT6 Status"))
+status.anonymous = true
+status.addremove = false
+status.template = "nat6-helper/nat6_status"
 
 s = m:section(TypedSection, "nat6-helper")
 s.addremove = false
 s.anonymous = true
 
+--启用开关
 enabled = s:option(Flag, "enabled", translate("Enable"))
 enabled.default = 0
 enabled.rmempty = false
 
+--IPv6接口
 name = s:option(Value, "name", translate("Interface"))
 name.rmempty = false
 name.default = "wan6"
 name.description = translate("默认为wan6，也可自行设置为有ipv6的接口名称。启用插件后，当该接口变动时自动设置nat6。")
 
+
 s = m:section(SimpleSection)
 s.addremove = false
 s.anonymous = true
 
+--初始化按钮
 init_button = s:option(Button, "init_button", translate("初始化"))
 init_button.inputtitle = translate("一键配置")
 init_button.inputstyle = "apply"
@@ -39,6 +37,7 @@ function init_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper setLan")
 end
 
+--手动重启按钮
 enable_nat_button = s:option(Button, "enable_nat_button", translate("重启nat6"))
 enable_nat_button.inputtitle = translate("手动重启nat6")
 enable_nat_button.inputstyle = "apply"
@@ -48,6 +47,7 @@ function enable_nat_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper startNat6")
 end
 
+--手动关闭按钮
 disable_nat_button = s:option(Button, "disable_nat_button", translate("关闭nat6"))
 disable_nat_button.inputtitle = translate("手动关闭nat6")
 disable_nat_button.inputstyle = "apply"
@@ -56,6 +56,7 @@ function disable_nat_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper stopNat6")
 end
 
+--恢复原始配置按钮
 reset_button = s:option(Button, "reset_button", translate("清除配置"))
 reset_button.inputtitle = translate("一键清除配置")
 reset_button.inputstyle = "apply"
