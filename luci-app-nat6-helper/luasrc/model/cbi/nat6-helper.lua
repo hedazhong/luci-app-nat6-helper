@@ -1,6 +1,6 @@
 --简介
 m = Map("nat6-helper", "NAT6 配置助手") 
-m.description = translate("IPv6 路由器做 NAT6，使得路由器下级可以使用 IPv6 协议访问网站。<br />若插件启用失败，请检查路由器是否正常获取到IPv6")
+m.description = translate("IPv6 路由器做 NAT6，使得路由器下级可以使用 IPv6 协议访问网站。<br />若插件启用失败，请检查路由器是否正常获取到IPv6。")
 
 -- 插件启用状态和nat6运行状态
 status = m:section(TypedSection, "nat6_status", translate("NAT6 Status"))
@@ -8,17 +8,17 @@ status.anonymous = true
 status.addremove = false
 status.template = "nat6-helper/nat6_status"
 
-s = m:section(TypedSection, "nat6-helper")
-s.addremove = false
-s.anonymous = true
+config = m:section(TypedSection, "nat6-helper")
+config.addremove = false
+config.anonymous = true
 
 --启用开关
-enabled = s:option(Flag, "enabled", translate("Enable"))
+enabled = config:option(Flag, "enabled", translate("Enable"))
 enabled.default = 0
 enabled.rmempty = false
 
 --IPv6接口
-name = s:option(Value, "name", translate("Interface"))
+name = config:option(Value, "name", translate("Interface"))
 name.rmempty = false
 name.default = "wan6"
 name.description = translate("默认为wan6，也可自行设置为有ipv6的接口名称。启用插件后，当该接口变动时自动设置nat6。")
