@@ -155,7 +155,7 @@ startNat6()
 
 stopNat6()
 {
-    #删除之前在路由表为目的地为IPv6公网的流量设置的路由规则
+    #删除之前在路由表为目的地为IPv6公网的流量设置的路由规则。接口关闭或者清除配置时调用，故不需要校验插件是否启用。
     ip -6 route del "2000::/3" via $last_gw dev $last_if  > /dev/null 2>&1
 
     #删除nat6设置
@@ -170,6 +170,9 @@ stopNat6()
 
 resetLan()
 {
+    #插件未关闭则退出
+    [ $enable = "1" ] && { logger -t nat6-helper "Please disable the nat6-helper plugin before one-key configuration."; exit 0; }
+    
     stopNat6
 
     #重设DHCPv6和IPv6-DNS，LUA为初始的或者d00:6666:6666::/64，不需要恢复

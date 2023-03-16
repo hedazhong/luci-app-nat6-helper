@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-nat6-helper
-PKG_VERSION:=v1.7
+PKG_VERSION:=v1.8
 PKG_RELEASE:=1
 
 PKG_LICENSE:=MIT License
@@ -13,4 +13,3 @@ LUCI_PKGARCH:=all
 include $(TOPDIR)/feeds/luci/luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature
-

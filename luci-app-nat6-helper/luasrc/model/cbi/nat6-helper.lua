@@ -28,7 +28,7 @@ name.description = translate("默认为wan6，也可自行设置为有ipv6的接
 init_button = s:option(Button, "init_button", translate("初始化"))
 init_button.inputtitle = translate("一键配置")
 init_button.inputstyle = "apply"
-init_button.description = translate("需要先启用本插件否则点击无效，一键设置ULA、DHCPv6和IPv6-DNS，并设置通告默认网关。<br />需要先启用本插件否则点击无效，一键设置ULA、DHCPv6和IPv6-DNS，并设置通告默认网关。<br />配置时会重启一次网络，稍等片刻网络恢复。接口获得IPv6网络后会自动配置nat6。")
+init_button.description = translate("需要先启用本插件否则点击无效，一键设置ULA、IPv6-DNS和DHCPv6。<br />配置时会重启一次网络，稍等片刻网络恢复。接口获得IPv6网络后会自动配置nat6。")
 function init_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper setLan")
 end
@@ -56,7 +56,7 @@ end
 reset_button = s:option(Button, "reset_button", translate("清除配置"))
 reset_button.inputtitle = translate("一键清除配置")
 reset_button.inputstyle = "apply"
-reset_button.description = translate("一键清除配置，将初始化配置时所修改的配置重设为默认值。<br />插件未启动时点击也有效，故也可用于非nat6情况下的重置。")
+reset_button.description = translate("需要先关闭本插件否则点击无效。一键重设初始化时所修改的配置为默认值。<br />插件未启动时点击也有效，故也可用于非nat6情况下的重置。")
 function reset_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper resetLan")
 end
