@@ -9,22 +9,14 @@ function index()
 	
 	entry({"admin", "services", "nat6-helper", "general"},cbi("nat6-helper"), _("设置"), 1)
 
-	entry({"admin", "services", "nat6-helper", "act_status"},call("act_status")).leaf=true
-
 	entry({"admin", "services", "nat6-helper", "nat6_status"},call("nat6_status")).leaf=true
 	
 end
 
-function act_status()
+function nat6_status()
 	local e={}
 	--判断插件启用状态，使用enable的值判断
 	e.enabled=(luci.model.uci.cursor():get("nat6-helper", "@nat6-helper[0]", "enabled")=="1") and 1 or 0
-	luci.http.prepare_content("application/json")
-	luci.http.write_json(e)
-end
-
-function nat6_status()
-	local e={}
 	--判断nat6状态
 	e.nat6_running=(luci.sys.call("ip6tables -t nat -L | grep 'v6NAT' > /dev/null")==0 and luci.sys.call("ip -6 route | grep '2000::/3' > /dev/null")==0)
 	luci.http.prepare_content("application/json")

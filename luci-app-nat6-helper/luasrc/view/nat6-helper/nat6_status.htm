@@ -1,23 +1,15 @@
 <script type="text/javascript">//<![CDATA[
-XHR.poll(3, '<%=url([[admin]], [[services]], [[nat6-helper]], [[act_status]])%>', null,
-	function(x, data) {
-		var tb = document.getElementById('act_status');
-		if (data && tb) {
-			if (data.enabled) {
-				var links = '<em><b><font color=green>插件启用状态 <%: 已启用%></font></b></em>';
-				tb.innerHTML = links;
-			} else {
-				tb.innerHTML = '<em><b><font color=red>插件启用状态 <%: 未启用%></font></b></em>';
-			}
-		}
-	}
-);
-//]]>
-</script>
-
-<script type="text/javascript">//<![CDATA[
 XHR.poll(3, '<%=url([[admin]], [[services]], [[nat6-helper]], [[nat6_status]])%>', null,
 	function(x, data) {
+		var ta = document.getElementById('act_status');
+		if (data && ta) {
+			if (data.enabled) {
+				var links = '<em><b><font color=green>插件启用状态 <%: 已启用%></font></b></em>';
+				ta.innerHTML = links;
+			} else {
+				ta.innerHTML = '<em><b><font color=red>插件启用状态 <%: 未启用%></font></b></em>';
+			}
+		}
 		var tb = document.getElementById('nat6_status');
 		if (data && tb) {
 			if (data.nat6_running) {
