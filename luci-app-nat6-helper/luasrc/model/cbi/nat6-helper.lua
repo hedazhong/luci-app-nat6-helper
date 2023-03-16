@@ -51,7 +51,7 @@ end
 disable_nat_button = s:option(Button, "disable_nat_button", translate("关闭nat6"))
 disable_nat_button.inputtitle = translate("手动关闭nat6")
 disable_nat_button.inputstyle = "apply"
-disable_nat_button.description = translate("手动关闭nat6，仅仅删除nat6路由转发规则和下级设备nat6流量的IPv6网关。<br />不会改动其他配置，等效于接口关闭时的动作。")
+disable_nat_button.description = translate("手动暂时关闭nat6，仅仅删除nat6路由转发和nat6的IPv6网关，接口启动或重启后会再次启用nat6。<br />不会改动其他配置，等效于接口关闭时的动作。")
 function disable_nat_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper stopNat6")
 end

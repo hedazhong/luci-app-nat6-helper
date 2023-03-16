@@ -56,6 +56,12 @@ setLan()
     #uci set firewall.@defaults[0].forward='ACCEPT'                                  #基本设置中设置允许转发，即没有指定防火墙区域等情况时，默认允许转发
     #uci set firewall.@zone[1].forward='ACCEPT'                                      #“WAN”区域设置允许转发，@zone[0]对应“LAN”区域、@zone[1]对应“WAN”区域（默认情况）
 
+    #写入到系统配置
+    echo "net.ipv6.conf.default.forwarding=2" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.all.forwarding=2" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.default.accept_ra=2" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.all.accept_ra=2" >> /etc/sysctl.conf
+
     #重启网络和DHCP，输出日志
     uci commit network
     uci commit dhcp
@@ -186,6 +192,12 @@ resetLan()
     uci set dhcp.lan.force='0'                                                      #取消强制DHCP
 
     #取消禁止解析IPv6 DNS记录，不建议取消
+
+    #删除写入到系统配置的配置
+    sed -i '/net.ipv6.conf.default.forwarding=2/d' /etc/sysctl.conf
+    sed -i '/net.ipv6.conf.all.forwarding=2/d' /etc/sysctl.conf
+    sed -i '/net.ipv6.conf.default.accept_ra=2/d' /etc/sysctl.conf
+    sed -i '/net.ipv6.conf.all.accept_ra=2/d' /etc/sysctl.conf
 
     #重启网络和DHCP，输出日志
     uci commit network
