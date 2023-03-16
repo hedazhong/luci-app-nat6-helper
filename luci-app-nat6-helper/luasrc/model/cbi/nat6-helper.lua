@@ -8,25 +8,21 @@ status.anonymous = true
 status.addremove = false
 status.template = "nat6-helper/nat6_status"
 
-config = m:section(TypedSection, "nat6-helper")
-config.addremove = false
-config.anonymous = true
+
+s = m:section(TypedSection, "nat6-helper")
+s.addremove = false
+s.anonymous = true
 
 --启用开关
-enabled = config:option(Flag, "enabled", translate("Enable"))
+enabled = s:option(Flag, "enabled", translate("Enable"))
 enabled.default = 0
 enabled.rmempty = false
 
 --IPv6接口
-name = config:option(Value, "name", translate("Interface"))
+name = s:option(Value, "name", translate("Interface"))
 name.rmempty = false
 name.default = "wan6"
 name.description = translate("默认为wan6，也可自行设置为有ipv6的接口名称。启用插件后，当该接口变动时自动设置nat6。")
-
-
-s = m:section(SimpleSection)
-s.addremove = false
-s.anonymous = true
 
 --初始化按钮
 init_button = s:option(Button, "init_button", translate("初始化"))
