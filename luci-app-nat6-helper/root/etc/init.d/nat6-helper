@@ -5,7 +5,7 @@ START=55
 STOP=10
 
 EXTRA_COMMANDS="setLan startNat6 stopNat6 resetLan"
-EXTRA_HELP="setLan:Setting ULA, IPv6-DNS and DHCPv6 start:starting nat6 stop:Stoping nat6 reset:Resetting ULA, IPv6-DNS and DHCPv6"
+EXTRA_HELP="setLan:Setting ULA, IPv6-DNS and DHCPv6 startNat6:starting nat6 stopNat6:Stoping nat6 resetLan:Resetting ULA, IPv6-DNS and DHCPv6"
 
 enable=$(uci get nat6-helper.@nat6-helper[0].enabled)                                    #插件是否启用
 WAN6_NAME=$(uci get nat6-helper.@nat6-helper[0].name)                                    #选定的IPv6上行接口，默认为wan6
