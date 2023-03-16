@@ -5,9 +5,6 @@
 enable=$(uci get nat6-helper.@nat6-helper[0].enabled)                                    #插件是否启用
 WAN6_NAME=$(uci get nat6-helper.@nat6-helper[0].name)                                    #选定的IPv6上行接口，默认为wan6
 
-#插件未开启则退出
-[ $enable = "0" ] && exit 0
-
 #若变动网卡不是插件内设置的IPv6上行接口则直接退出
 [ "$INTERFACE" = "$WAN6_NAME" ] || exit 0
 

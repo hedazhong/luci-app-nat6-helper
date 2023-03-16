@@ -1,15 +1,16 @@
 #!/bin/sh /etc/rc.common
 # NAT6 init script for OpenWrt // Depends on package: kmod-ipt-nat6
 
-START=99
+START=55
 STOP=10
 
-EXTRA_COMMANDS="setLan"
-EXTRA_HELP="set ULA and DHCPv6"
+EXTRA_COMMANDS="setLan start stop reset"
+EXTRA_HELP="setLan:Setting ULA, IPv6-DNS and DHCPv6 start:starting nat6 stop:Stoping nat6 reset:Resetting ULA, IPv6-DNS and DHCPv6"
 
 enable=$(uci get nat6-helper.@nat6-helper[0].enabled)                                    #插件是否启用
 WAN6_NAME=$(uci get nat6-helper.@nat6-helper[0].name)                                    #选定的IPv6上行接口，默认为wan6
 ULA_PREFIX=$(uci get network.globals.ula_prefix)                                         #IPv6 ULA
+PREFIX_LEN=$(echo $ULA_PREFIX | awk -F/ '{print $2}')                                    #提取设定的ULA的前缀长度
 
 interface=$(uci get "network.$WAN6_NAME.device" || uci get "network.$WAN6_NAME.ifname")  #获取选中的ipv6接口的物理接口
 last_if=$(ip6tables-save -t nat | grep "v6NAT" | awk '{print $4}')                       #获取之前设置的出口网口
@@ -22,8 +23,13 @@ last_gw=$(ip -6 route | grep "2000::/3" | awk '{print $3}')                     
 #一键设置函数
 setLan() 
 {
-    #配置ULA和IPv6-DNS
-    uci set network.globals.ula_prefix='fd00:6666:6666::/64'                        #设置LUA为fd00:6666:6666::/64，可自行修改
+    #插件未开启则退出
+    [ $enable = "0" ] && { logger -t nat6-helper "Please enable the nat6-helper plugin before one-key configuration."; exit 0; }
+    
+    #配置ULA IPv6-DNS DHCPv6
+    if [ $(echo "$ULA_PREFIX" | grep -c -E "^((dc[0-9a-fA-F]{2}|dd[0-9a-fA-F]{2}|fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
+        uci set network.globals.ula_prefix='fd00:6666:6666::/64'                    #不符合要求重设LUA为fd00:6666:6666::/64，可自行修改
+    fi
     uci set network.$WAN6_NAME.dns='2001:4860:4860::8888 240c::6666 2400:3200::1'   #设置IPv6接口的DNS，分别为谷歌、中国下一代互联网北京研究中心、阿里的DNS
     uci set network.$WAN6_NAME.peerdns='0'                                          #禁用IPv6接口的DNS服务器自动配置，即禁用使用广域网ISP提供的DNS服务器
     uci set network.$WAN6_NAME.reqaddress='try'                                     #为IPv6接口配置IPv6地址，优先使用DHCPv6分配的IPv6地址，如果DHCPv6分配失败，则自动分配IPv6地址
@@ -34,11 +40,10 @@ setLan()
     uci set dhcp.lan.dhcpv6='server'                                                #将lan接口上的DHCPv6服务设置为服务器模式
     uci delete dhcp.lan.ndp                                                         #停用NDP代理
     uci set dhcp.lan.ra_management='1'                                              #有状态+无状态 0-SLAAC 1-SLAAC和DHCPv6 2-DHCPv6
-    uci set dhcp.lan.ra_default='1'                                                 #总是通告默认路由 0-存在默认路由且具有全局IPv6地址 1-存在默认路由但没有全局IPv6地址 2-两者均不满足
+    uci set dhcp.lan.ra_default='1'                                                 #总是通告默认路由，关键 0-存在默认路由且具有全局IPv6地址 1-存在默认路由但没有全局IPv6地址 2-两者均不满足
  
     #配置LAN接口的IPv6分配长度
-    PREFIX_LEN=$(echo ${ULA_PREFIX} | awk -F/ '{print $2}')                            #提取设定的ULA的前缀长度
-    uci set network.lan.ip6assign="${PREFIX_LEN}"                                   #设置LAN接口的IPv6分配长度，默认ULA时应为64
+    uci set network.lan.ip6assign="$PREFIX_LEN"                                     #设置LAN接口的IPv6分配长度，默认ULA时应为64
 
     #LAN接口强制DHCP
     uci set dhcp.lan.force='1'                                                      #即使检测到另一台服务器,也要强制使用此网络上的DHCP
@@ -54,13 +59,16 @@ setLan()
     #重启网络和DHCP，输出日志
     uci commit network
     uci commit dhcp
-    /etc/init.d/network restart
     /etc/init.d/dnsmasq restart
-    logger -t nat6-helper "ULA and DHCPv6 have been set"
+    /etc/init.d/network restart
+    logger -t nat6-helper "ULA, IPv6-DNS and DHCPv6 have been set"
 }
 
 start()
 {
+    #插件未开启则退出
+    [ $enable = "0" ] && exit 0
+
     #测试指定的IPv6接口是否已经获得带网关的默认IPv6路由，这条路由为ISP-DHCPv6客户端自动配置，存在该路由说明路由器自身已经获得IPv6访问权
     PROBE=0
     COUNT=0
@@ -94,8 +102,9 @@ start()
         logger -t nat6-helper "Fatal error: IPv6 ULA prefix $ULA_PREFIX seems invalid. Please verify that a prefix is set and valid." && exit 1
     fi
 
-    #设置nat6并添加标识
-    ip6tables -t nat -A POSTROUTING -o $interface -m comment --comment "v6NAT" -j MASQUERADE
+    #设置nat6并添加标识 Add IPv6 NAT rule to /etc/firewall.user
+    ip6tables -t nat -I POSTROUTING -o $interface -m comment --comment "v6NAT" -j MASQUERADE > /dev/null 2>&1                  #-A最后 -I最前，优先匹配
+    #echo "ip6tables -t nat -I POSTROUTING -o $interface -m comment --comment \"v6NAT\" -j MASQUERADE" >> /etc/firewall.user   #将路由规则添加到/etc/firewall.user
 
     #检查上一条命令执行的结果，如果返回值为0，则说明命令执行成功，输出一条日志记录添加IPv6 masquerading规则到
     #防火墙的情况，否则执行失败，输出一条日志记录添加IPv6 masquerading规则失败的情况，并且终止脚本的执行。
@@ -110,9 +119,9 @@ start()
 
     #检查上一条命令执行的结果，如果返回值为0，则说明添加路由成功，输出一条日志；如果失败，则输出另一条日志，并且终止脚本的执行。
     if [ $? -eq 0 ] ; then
-            logger -t nat6-helper "Added $gateway to routing table as gateway on $interface for outgoing connections"
+        logger -t nat6-helper "Added $gateway to routing table as gateway on $interface for outgoing connections"
     else
-            logger -t nat6-helper "Error: Failed to add $gateway to routing table as gateway on $interface for outgoing connections"
+        logger -t nat6-helper "Error: Failed to add $gateway to routing table as gateway on $interface for outgoing connections"
     fi
 
     #设置上行接口的IPv6的无状态地址（接收RA、启用临时IPv6地址），以使用临时IPv6地址来发送出站连接
@@ -139,15 +148,49 @@ start()
 }
 
 stop()
-{    
+{
     #删除之前在路由表为目的地为IPv6公网的流量设置的路由规则
-    ip -6 r del "2000::/3" via $last_gw dev $last_if
+    ip -6 route del "2000::/3" via $last_gw dev $last_if  > /dev/null 2>&1
 
     #删除nat6设置
-    ip6tables -t nat -D POSTROUTING -o $last_if -m comment --comment "v6NAT" -j MASQUERADE
+    ip6tables -t nat -D POSTROUTING -o $last_if -m comment --comment \"v6NAT\" -j MASQUERADE > /dev/null 2>&1
+    #sed -i "/ip6tables -t nat -A POSTROUTING -o $last_if -m comment --comment \"v6NAT\" -j MASQUERADE/d" /etc/firewall.user > /dev/null 2>&1   #删除/etc/firewall.user中路由规则
 
     #向系统日志输出清除设置成功信息
     if !(ip -6 route | grep -q "2000::/3") && !(ip6tables-save -t nat | grep -q "v6NAT");then
         logger -t nat6-helper "Routing rule and firewall NAT6 rule have been delete"
     fi
+}
+
+reset()
+{
+    stop
+
+    #重设DHCPv6和IPv6-DNS，LUA为初始的或者d00:6666:6666::/64，不需要恢复
+    uci set network.$WAN6_NAME.dns=''                                               #清空DNS
+    uci set network.$WAN6_NAME.peerdns='1'                                          #DNS服务器自动配置
+    uci set network.$WAN6_NAME.reqaddress='try'
+    uci set network.$WAN6_NAME.reqprefix='auto'
+
+    #重设LAN接口的DHCPv6
+    uci set dhcp.lan.ra='hybrid'                                                    #将lan接口上的路由通告服务设置为混和模式
+    uci set dhcp.lan.dhcpv6='hybrid'                                                #将lan接口上的DHCPv6服务设置为混合模式
+    uci set dhcp.lan.ndp='relay'                                                    #启用用NDP代理
+    uci set dhcp.lan.ra_management='1'                                              #有状态+无状态 0-SLAAC 1-SLAAC和DHCPv6 2-DHCPv6
+    uci set dhcp.lan.ra_default='0'                                                 #取消总是通告默认路由 0-存在默认路由且具有全局IPv6地址 1-存在默认路由但没有全局IPv6地址 2-两者均不满足
+ 
+    #配置LAN接口的IPv6分配长度
+    uci set network.lan.ip6assign="60"                                              #设置LAN接口的IPv6分配长度，此时重设为64
+
+    #LAN接口强制DHCP
+    uci set dhcp.lan.force='0'                                                      #取消强制DHCP
+
+    #取消禁止解析IPv6 DNS记录，不建议取消
+
+    #重启网络和DHCP，输出日志
+    uci commit network
+    uci commit dhcp
+    /etc/init.d/dnsmasq restart
+    /etc/init.d/network restart
+    logger -t nat6-helper "IPv6-DNS and DHCPv6 have been set"
 }
