@@ -45,7 +45,7 @@ enable_nat_button.inputstyle = "apply"
 enable_nat_button.description = translate("手动重启nat6，仅仅配置nat6路由转发规则和下级设备nat6流量的IPv6网关。<br />不会改动其他配置，等效于接口启动或者重启时的动作。")
 function enable_nat_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper stopNat6")
-    io.popen("/etc/init.d/nat6-helper start")
+    io.popen("/etc/init.d/nat6-helper startNat6")
 end
 
 disable_nat_button = s:option(Button, "disable_nat_button", translate("关闭nat6"))
@@ -61,7 +61,7 @@ reset_button.inputtitle = translate("一键清除配置")
 reset_button.inputstyle = "apply"
 reset_button.description = translate("一键清除配置，将初始化配置时所修改的配置重设为默认值。<br />插件未启动时点击也有效，故也可用于非nat6情况下的重置。")
 function reset_button.write(self, section)
-    io.popen("/etc/init.d/nat6-helper resetLAN")
+    io.popen("/etc/init.d/nat6-helper resetLan")
 end
 
 return m

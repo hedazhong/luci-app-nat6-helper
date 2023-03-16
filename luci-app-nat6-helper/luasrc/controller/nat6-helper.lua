@@ -17,8 +17,8 @@ end
 
 function act_status()
 	local e={}
-	--判断插件启用状态
-	e.enabled=(luci.model.uci.cursor():get("nat6-helper", "@nat6-helper[0]", "enabled")=="1") and 1 or 0   --修改为使用enable的值判断
+	--判断插件启用状态，使用enable的值判断
+	e.enabled=(luci.model.uci.cursor():get("nat6-helper", "@nat6-helper[0]", "enabled")=="1") and 1 or 0
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end
