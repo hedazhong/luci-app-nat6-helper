@@ -1,3 +1,9 @@
 config nat6-helper
 	option enabled '0'
 	option name 'wan6'
+
+config check_ipv6
+    option keepipv6_enabled '0'
+	option ping_host '240c::6666'
+	option ping_period '30'
+	option daemon_running '0'
