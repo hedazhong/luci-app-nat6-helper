@@ -224,7 +224,7 @@ ipv6_daemon()
     # 已有运行则退出
     ["$daemon_running" = "1"] && exit 0
     
-    # 设置为正在运行
+    # 设置为正在运行,相当于加锁
     uci set nat6-helper.@check_ipv6[0].daemon_running=1
     uci commit nat6-helper
 
@@ -238,7 +238,7 @@ ipv6_daemon()
     while true; do
         if [ "$keepipv6_enabled" = "1" ]; then
             
-            # running被关闭按钮强制设置为0，则退出
+            # running被关闭按钮强制设置为0，则退出,相当于锁被没收
             ["$daemon_running" = "0"] && exit 0
             
             # Ping检测
@@ -253,9 +253,15 @@ ipv6_daemon()
             # 等待指定时间后再次检测
             sleep "$ping_period" >/dev/null 2>&1
         else
+            # 设置为结束运行,相当于解锁
             uci set nat6-helper.@check_ipv6[0].daemon_running=0
             uci commit nat6-helper
             break
         fi
     done
+}
+
+boot()
+{
+    uci set nat6-helper.@check_ipv6[0].daemon_running=0
 }
