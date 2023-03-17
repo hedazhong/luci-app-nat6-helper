@@ -234,8 +234,8 @@ ipv6_daemon()
     ping_host=$(uci get nat6-helper.@check_ipv6[0].ping_host)
     ping_period=$(uci get nat6-helper.@check_ipv6[0].ping_period)
 
-    # 判断守护是否启用
     while true; do
+        # 判断守护是否启用
         if [ "$keepipv6_enabled" = "1" ]; then
             
             # running被关闭按钮强制设置为0，则退出,相当于锁被没收
