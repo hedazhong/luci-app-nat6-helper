@@ -92,22 +92,21 @@ ping_period.description = translate("检测网络连接的频率。单位为秒�
 
 --启动IPv6连通性守护
 start_daemon_button = p:option(Button, "start_daemon_button", translate("启动守护"))
-start_daemon_button.inputtitle = "开启守护"
+start_daemon_button.inputtitle = translate("开启守护")
 start_daemon_button.inputstyle = "apply"
 start_daemon_button.description = translate("点击该按钮前请先开启守护开关。守护启用时，开机加载插件时会自动启动。<br />守护丢失或者初次启用可手动点击启动。")
 function start_daemon_button.write(self, section)
     --sh后台运行
     os.execute("nohup /etc/init.d/nat6-helper ipv6_daemon &")
-    os.execute("sleep 1")
     luci.http.write("<script>alert('已开始守护接口IPv6连通性');</script>")
 end
 
 --关闭IPv6连通性守护
-stop_daemon_button = p:option(Button, "start_daemon_button", translate("终止守护"))
-stop_daemon_button.inputtitle = "关闭守护"
+stop_daemon_button = p:option(Button, "stop_daemon_button", translate("终止守护"))
+stop_daemon_button.inputtitle = translate("关闭守护")
 stop_daemon_button.inputstyle = "apply"
 stop_daemon_button.description = translate("点击该按钮前请先开启守护开关。守护启用时，开机加载插件时会自动启动。<br />守护丢失或者初次启用可手动点击启动。")
-function start_daemon_button.write(self, section)
+function stop_daemon_button.write(self, section)
     --杀除后台运行的sh
     luci.model.uci.cursor():set("nat6-helper", "@check_ipv6[0]", "daemon_running", "0")
     luci.http.write("<script>alert('已结束守护接口IPv6连通性');</script>")
@@ -115,7 +114,7 @@ end
 
 --手动重启IPv6接口
 restart_wan6_button = p:option(Button, "restart_wan6_button", translate("重启WAN6"))
-restart_wan6_button.inputtitle = "手动重启WAN6"
+restart_wan6_button.inputtitle = translate("手动重启WAN6")
 restart_wan6_button.inputstyle = "apply"
 restart_wan6_button.description = translate("点击这个按钮重启WAN6接口")
 function restart_wan6_button.write(self, section)
