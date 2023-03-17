@@ -13,7 +13,7 @@ ULA_PREFIX=$(uci get network.globals.ula_prefix)                                
 PREFIX_LEN=$(echo $ULA_PREFIX | awk -F/ '{print $2}')                                    #提取设定的ULA的前缀长度
 
 interface=$(uci get "network.$WAN6_NAME.device" || uci get "network.$WAN6_NAME.ifname")  #获取选中的ipv6接口的物理接口
-last_if=$(ip6tables-save -t nat | grep "v6NAT" | awk '{print $4}')                       #获取之前设置的出口网口
+last_if=$(ip6tables-save -t nat | grep "v6NAT" | awk '{print $4}' | head -n 1)                       #获取之前设置的出口网口
 #gateway=$(ip -6 route | grep "default from 2" | awk '{print $5}')                        #获取当前状态默认IPv6网关
 gateway=$(ip -6 route | grep -i '^default.*via' | grep -i -F "dev $WAN6_INTERFACE" | grep -i -o 'via.*' | cut -d ' ' -f 2 | head -n 1)   #获取网关的更好的写法
 last_gw=$(ip -6 route | grep "2000::/3" | awk '{print $3}')                              #之前由脚本设置的IPv6路由的网关地址
@@ -104,7 +104,7 @@ startNat6()
     fi
 
     #检测当前ULA是否符合RFC4193定义的ULA前缀范围fc00::/7(增加dc00::/7)
-    if [ $(echo "$ULA_PREFIX" | grep -c -E "^((dc[0-9a-fA-F]{2}|dd[0-9a-fA-F]{2}|fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
+    if [ $(echo "$ULA_PREFIX" | grep -c -E "^(dc[0-9a-fA-F]{2}|dd[0-9a-fA-F]{2}|fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
         logger -t nat6-helper "Fatal error: IPv6 ULA prefix $ULA_PREFIX seems invalid. Please verify that a prefix is set and valid." && exit 1
     fi
 
@@ -157,9 +157,15 @@ stopNat6()
 {
     #删除之前在路由表为目的地为IPv6公网的流量设置的路由规则。接口关闭或者清除配置时调用，故不需要校验插件是否启用。
     ip -6 route del "2000::/3" via $last_gw dev $last_if  > /dev/null 2>&1
+    
+
+    while ip6tables -t nat -C POSTROUTING -o $last_if -m comment --comment v6NAT -j MASQUERADE >/dev/null 2>&1; do
+        ip6tables -t nat -D POSTROUTING -o $last_if -m comment --comment v6NAT -j MASQUERADE >/dev/null 2>&1
+    done
+
 
     #删除nat6设置
-    ip6tables -t nat -D POSTROUTING -o $last_if -m comment --comment \"v6NAT\" -j MASQUERADE > /dev/null 2>&1
+    ip6tables -t nat -D POSTROUTING -o $last_if -m comment --comment v6NAT -j MASQUERADE > /dev/null 2>&1
     #sed -i "/ip6tables -t nat -A POSTROUTING -o $last_if -m comment --comment \"v6NAT\" -j MASQUERADE/d" /etc/firewall.user > /dev/null 2>&1   #删除/etc/firewall.user中路由规则
 
     #向系统日志输出清除设置成功信息
