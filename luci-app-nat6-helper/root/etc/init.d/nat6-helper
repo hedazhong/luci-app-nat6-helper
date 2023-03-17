@@ -27,7 +27,7 @@ setLan()
     [ $enable = "0" ] && { logger -t nat6-helper "Please enable the nat6-helper plugin before one-key configuration."; exit 0; }
     
     #配置ULA IPv6-DNS DHCPv6
-    if [ $(echo "$ULA_PREFIX" | grep -c -E "^((dc[0-9a-fA-F]{2}|dd[0-9a-fA-F]{2}|fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
+    if [ $(echo "$ULA_PREFIX" | grep -c -E "^(dc[0-9a-fA-F]{2}|dd[0-9a-fA-F]{2}|fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
         uci set network.globals.ula_prefix='fd00:6666:6666::/64'                    #不符合要求重设LUA为fd00:6666:6666::/64，可自行修改
     fi
     uci set network.$WAN6_NAME.dns='2001:4860:4860::8888 240c::6666 2400:3200::1'   #设置IPv6接口的DNS，分别为谷歌、中国下一代互联网北京研究中心、阿里的DNS

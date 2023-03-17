@@ -38,7 +38,7 @@ end
 restart_wan6_button = s:option(Button, "restart_wan6_button", translate("重启WAN6"))
 restart_wan6_button.inputtitle = "Restart WAN6"
 restart_wan6_button.inputstyle = "apply"
-restart_wan6_button.description = "Click this button to restart WAN6."
+restart_wan6_button.description = translate("点击这个按钮重启WAN6接口")
 function restart_wan6_button.write(self, section)
     WAN6_NAME=io.popen("uci get nat6-helper.@nat6-helper[0].name"):read("*line")
     os.execute(string.format("sudo ifdown %s && sudo ifup %s", WAN6_NAME, WAN6_NAME))
@@ -71,7 +71,6 @@ reset_button = s:option(Button, "reset_button", translate("清除配置"))
 reset_button.inputtitle = translate("一键清除配置")
 reset_button.inputstyle = "apply"
 reset_button.description = translate("需要先关闭本插件否则点击无效。一键重设初始化时所修改的配置为默认值。<br />插件未启动时点击也有效，故也可用于非nat6情况下的重置。")
-reset_button.onclick = "return confirm('确定要清除配置吗？');"
 function reset_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper resetLan")
     luci.http.write("<script>alert('已发出重置指令');</script>")
