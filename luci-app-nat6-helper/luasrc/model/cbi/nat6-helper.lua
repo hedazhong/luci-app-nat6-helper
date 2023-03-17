@@ -30,7 +30,7 @@ init_button.inputtitle = translate("一键配置")
 init_button.inputstyle = "apply"
 init_button.description = translate("需要先启用本插件否则点击无效，一键设置ULA、IPv6-DNS和DHCPv6。<br />配置时会重启一次网络，稍等片刻网络恢复。接口获得IPv6网络后会自动配置nat6。")
 function init_button.write(self, section)
-    io.popen("/etc/init.d/nat6-helper setLan")
+    io.popen("/etc/init.d/nat6-helper set_lan")
     luci.http.write("<script>alert('已发出初始化指令');</script>")
 end
 
@@ -40,8 +40,8 @@ enable_nat_button.inputtitle = translate("手动重启nat6")
 enable_nat_button.inputstyle = "apply"
 enable_nat_button.description = translate("手动重启nat6，仅仅配置nat6路由转发规则和下级设备nat6流量的IPv6网关。<br />不会改动其他配置，等效于接口启动或者重启时的动作。")
 function enable_nat_button.write(self, section)
-    io.popen("/etc/init.d/nat6-helper stopNat6")
-    io.popen("/etc/init.d/nat6-helper startNat6")
+    io.popen("/etc/init.d/nat6-helper stop_nat6")
+    io.popen("/etc/init.d/nat6-helper start_nat6")
     luci.http.write("<script>alert('已发出重启指令');</script>")
 end
 
@@ -51,7 +51,7 @@ disable_nat_button.inputtitle = translate("手动关闭nat6")
 disable_nat_button.inputstyle = "apply"
 disable_nat_button.description = translate("手动暂时关闭nat6，仅仅删除nat6路由转发和nat6的IPv6网关，接口启动或重启后会再次启用nat6。<br />不会改动其他配置，等效于接口关闭时的动作。")
 function disable_nat_button.write(self, section)
-    io.popen("/etc/init.d/nat6-helper stopNat6")
+    io.popen("/etc/init.d/nat6-helper stop_nat6")
     luci.http.write("<script>alert('已发出关闭指令');</script>")
 end
 
@@ -61,7 +61,7 @@ reset_button.inputtitle = translate("一键清除配置")
 reset_button.inputstyle = "apply"
 reset_button.description = translate("需要先关闭本插件否则点击无效。一键重设初始化时所修改的配置为默认值。<br />插件未启动时点击也有效，故也可用于非nat6情况下的重置。")
 function reset_button.write(self, section)
-    io.popen("/etc/init.d/nat6-helper resetLan")
+    io.popen("/etc/init.d/nat6-helper reset_lan")
     luci.http.write("<script>alert('已发出重置指令');</script>")
 end
 
@@ -96,7 +96,8 @@ start_daemon_button.inputtitle = "开启守护"
 start_daemon_button.inputstyle = "apply"
 start_daemon_button.description = translate("点击该按钮前请先开启守护开关。守护启用时，开机加载插件时会自动启动。<br />守护丢失或者初次启用可手动点击启动。")
 function start_daemon_button.write(self, section)
-    luci.sys.call("/usr/lib/lua/luci/controller/nat6-helper.lua check_ipv6")
+    --sh后台运行
+    os.execute("nohup /etc/init.d/nat6-helper ipv6_daemon &")
     luci.http.write("<script>alert('已开启守护接口IPv6连通性');</script>")
 end
 
