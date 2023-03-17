@@ -98,7 +98,18 @@ start_daemon_button.description = translate("点击该按钮前请先开启守�
 function start_daemon_button.write(self, section)
     --sh后台运行
     os.execute("nohup /etc/init.d/nat6-helper ipv6_daemon &")
-    luci.http.write("<script>alert('已开启守护接口IPv6连通性');</script>")
+    luci.http.write("<script>alert('已开始守护接口IPv6连通性');</script>")
+end
+
+--关闭IPv6连通性守护
+start_daemon_button = p:option(Button, "start_daemon_button", translate("终止守护"))
+start_daemon_button.inputtitle = "关闭守护"
+start_daemon_button.inputstyle = "apply"
+start_daemon_button.description = translate("点击该按钮前请先开启守护开关。守护启用时，开机加载插件时会自动启动。<br />守护丢失或者初次启用可手动点击启动。")
+function start_daemon_button.write(self, section)
+    --sh后台运行
+    luci.model.uci.cursor():set("nat6-helper", "@check_ipv6[0]", "daemon_running", "0")
+    luci.http.write("<script>alert('已结束守护接口IPv6连通性');</script>")
 end
 
 --手动重启IPv6接口
