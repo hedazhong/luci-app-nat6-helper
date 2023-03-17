@@ -105,7 +105,7 @@ end
 stop_daemon_button = p:option(Button, "stop_daemon_button", translate("终止守护"))
 stop_daemon_button.inputtitle = translate("关闭守护")
 stop_daemon_button.inputstyle = "apply"
-stop_daemon_button.description = translate("点击该按钮前请先开启守护开关。守护启用时，开机加载插件时会自动启动。<br />守护丢失或者初次启用可手动点击启动。")
+stop_daemon_button.description = translate("点击该按钮关闭后台守护。")
 function stop_daemon_button.write(self, section)
     --杀除后台运行的sh
     luci.model.uci.cursor():set("nat6-helper", "@check_ipv6[0]", "daemon_running", "0")
