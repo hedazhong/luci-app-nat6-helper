@@ -13,11 +13,6 @@ function index()
 	
 end
 
-function init()
-    local cmd = "nohup " .. luci.dispatcher.build_url("admin", "services", "nat6-helper", "check_ipv6") .. " >/dev/null 2>&1 &"
-    os.execute(cmd)
-end
-
 function nat6_status()
 	local e={}
 	--判断nat6启用状态
@@ -25,9 +20,9 @@ function nat6_status()
 	--判断nat6运行状态
 	e.nat6_running=(luci.sys.call("ip6tables -t nat -L | grep 'v6NAT' > /dev/null")==0 and luci.sys.call("ip -6 route | grep '2000::/3' > /dev/null")==0) and 1 or 0
 	--判断守护是否启用
-	e.daemon_enabled=(luci.model.uci.cursor():get("nat6-helper", "@check_ipv6[0]", "keepipv6_enabled")=="1") and 1 or 0
+	e.daemon_enabled=(luci.model.uci.cursor():get("nat6-helper", "@daemon_ipv6[0]", "daemon_enabled")=="1") and 1 or 0
 	--判断守护运行状态
-	e.daemon_running=(luci.model.uci.cursor():get("nat6-helper", "@check_ipv6[0]", "daemon_running")=="1") and 1 or 0
+	e.daemon_running=(luci.model.uci.cursor():get("nat6-helper", "@daemon_ipv6[0]", "daemon_running")=="1") and 1 or 0
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end

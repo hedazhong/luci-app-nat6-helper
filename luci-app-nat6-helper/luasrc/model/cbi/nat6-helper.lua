@@ -67,16 +67,16 @@ end
 
 
 --配置守护接口IPv6连通性的会话
-p = m:section(TypedSection, "check_ipv6")
+p = m:section(TypedSection, "daemon_ipv6")
 p.addremove = false
 p.anonymous = true
 
 
 --守护接口IPv6连通性的开关
-keepipv6_enabled = p:option(Flag, "keepipv6_enabled", translate("启用IPv6连通性守护"))
-keepipv6_enabled.default = 0
-keepipv6_enabled.rmempty = false
-keepipv6_enabled.description = translate("保持IPv6接口的网络连通性。")
+daemon_enabled = p:option(Flag, "daemon_enabled", translate("启用IPv6连通性守护"))
+daemon_enabled.default = 0
+daemon_enabled.rmempty = false
+daemon_enabled.description = translate("保持IPv6接口的网络连通性。")
 
 --Ping主机
 ping_host = p:option(Value, "ping_host", translate("Ping主机"), translate("Ping该主机以检查IPv6网络连通性"))
@@ -108,7 +108,9 @@ stop_daemon_button.inputstyle = "apply"
 stop_daemon_button.description = translate("点击该按钮关闭后台守护。")
 function stop_daemon_button.write(self, section)
     --杀除后台运行的sh
-    luci.model.uci.cursor():set("nat6-helper", "@check_ipv6[0]", "daemon_running", "0")
+    local ucursor = luci.model.uci.cursor()
+    ucursor:set("nat6-helper", "@daemon_ipv6[0]", "daemon_running", "0")
+    ucursor:commit("nat6-helper")
     luci.http.write("<script>alert('已结束守护接口IPv6连通性');</script>")
 end
 
