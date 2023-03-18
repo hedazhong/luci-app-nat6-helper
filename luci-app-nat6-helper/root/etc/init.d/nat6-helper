@@ -220,7 +220,7 @@ reset_lan()
 
 ipv6_daemon()
 {
-    daemon_enabled=$(uci get nat6-helper.@daemon_ipv6[0].daemon_enabled)                   #ipv6守护是否启用
+    daemon_enabled=$(uci get nat6-helper.@daemon_ipv6[0].daemon_enabled)                       #ipv6守护是否启用
     daemon_running=$(uci get nat6-helper.@daemon_ipv6[0].daemon_running)                       #ipv6守护运行状态
 
     #守护未开启则退出
