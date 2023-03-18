@@ -119,7 +119,7 @@ restart_wan6_button.inputstyle = "apply"
 restart_wan6_button.description = translate("点击这个按钮重启WAN6接口")
 function restart_wan6_button.write(self, section)
     WAN6_NAME=io.popen("uci get nat6-helper.@nat6-helper[0].name"):read("*line")
-    os.execute(string.format("sudo ifdown %s && sudo ifup %s", WAN6_NAME, WAN6_NAME))
+    os.execute(string.format("ifdown %s && ifup %s", WAN6_NAME, WAN6_NAME))
     luci.http.write("<script>alert('已发出重启WAN6指令');</script>")
 end
 
