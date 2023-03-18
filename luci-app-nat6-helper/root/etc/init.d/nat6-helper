@@ -15,11 +15,6 @@ WAN6_NAME=$(uci get nat6-helper.@nat6-helper[0].name)                           
 ULA_PREFIX=$(uci get network.globals.ula_prefix)                                          #IPv6 ULA
 PREFIX_LEN=$(echo $ULA_PREFIX | awk -F/ '{print $2}')                                     #提取设定的ULA的前缀长度
 
-keepipv6_enabled=$(uci get nat6-helper.@check_ipv6[0].keepipv6_enabled)                   #ipv6守护是否启用
-daemon_running=$(uci get nat6-helper.@check_ipv6[0].daemon_running)                       #ipv6守护运行状态
-ping_host=$(uci get nat6-helper.@check_ipv6[0].ping_host)                                 #ping主机
-ping_period=$(uci get nat6-helper.@check_ipv6[0].ping_period)                             #ping周期
-
 interface=$(uci get "network.$WAN6_NAME.device" || uci get "network.$WAN6_NAME.ifname")   #获取选中的ipv6接口的物理接口
 last_if=$(ip6tables-save -t nat | grep "v6NAT" | awk '{print $4}' | head -n 1)            #获取之前设置的出口网口
 #gateway=$(ip -6 route | grep "default from 2" | awk '{print $5}')                        #获取当前状态默认IPv6网关
@@ -225,6 +220,9 @@ reset_lan()
 
 ipv6_daemon()
 {
+    keepipv6_enabled=$(uci get nat6-helper.@check_ipv6[0].keepipv6_enabled)                   #ipv6守护是否启用
+    daemon_running=$(uci get nat6-helper.@check_ipv6[0].daemon_running)                       #ipv6守护运行状态
+
     #守护未开启则退出
     [ $keepipv6_enabled = "0" ] && exit 0
 
@@ -236,6 +234,11 @@ ipv6_daemon()
     uci commit nat6-helper
 
     while true; do
+        
+        #获取最新状态
+        keepipv6_enabled=$(uci get nat6-helper.@check_ipv6[0].keepipv6_enabled)                   #ipv6守护是否启用
+        daemon_running=$(uci get nat6-helper.@check_ipv6[0].daemon_running)                       #ipv6守护运行状态
+
         # 判断守护是否启用
         if [ "$keepipv6_enabled" = "1" ]; then
             
@@ -248,6 +251,8 @@ ipv6_daemon()
             fi
 
             # Ping检测
+            ping_host=$(uci get nat6-helper.@check_ipv6[0].ping_host)                                 #ping主机
+            ping_period=$(uci get nat6-helper.@check_ipv6[0].ping_period)                             #ping周期
             ping6 -c 3 -I "$WAN6_NAME" "$ping_host" >/dev/null 2>&1
             if [ $? -eq 0 ]; then
                 logger -t nat6-helper "The IPv6 network connectivity on interface $interface is normal"
