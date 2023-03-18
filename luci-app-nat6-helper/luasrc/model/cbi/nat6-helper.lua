@@ -88,7 +88,8 @@ ping_host.datatype = "host(2)"
 ping_period = p:option(Value, "ping_period", translate("Ping周期"))
 ping_period.rmempty = false
 ping_period.default = "30"
-ping_period.description = translate("检测网络连接的频率。单位为秒。")
+ping_period.datatype = "uinteger"
+ping_period.description = translate("检测网络连接的时间间隔，必须为整数。单位为秒。")
 
 --启动IPv6连通性守护
 start_daemon_button = p:option(Button, "start_daemon_button", translate("启动守护"))

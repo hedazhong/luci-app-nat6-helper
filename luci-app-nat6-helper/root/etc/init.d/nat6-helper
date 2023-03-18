@@ -227,34 +227,27 @@ ipv6_daemon()
     [ $daemon_enabled = "0" ] && exit 0
 
     # 已有运行则退出
-    ["$daemon_running" = "1"] && exit 0
+    [ $daemon_running = "1"] && exit 0
     
     # 设置为正在运行,相当于加锁
     uci set nat6-helper.@daemon_ipv6[0].daemon_running=1
     uci commit nat6-helper
 
+    logger -t nat6-helper "The daemon process for IPv6 connectivity on interface $interface has started"
+
     while true; do
         
         #获取最新状态
-        daemon_enabled=$(uci get nat6-helper.@daemon_ipv6[0].daemon_enabled)                   #ipv6守护是否启用
-        daemon_running=$(uci get nat6-helper.@daemon_ipv6[0].daemon_running)                       #ipv6守护运行状态
+        daemon_enabled=$(uci get nat6-helper.@daemon_ipv6[0].daemon_enabled)                          #ipv6守护是否启用
+        ping_period=$(uci get nat6-helper.@daemon_ipv6[0].ping_period)                                #ping周期
 
         # 判断守护是否启用
         if [ "$daemon_enabled" = "1" ]; then
-            
-            # running被关闭按钮强制设置为0，则退出,相当于锁被没收
-            if ["$daemon_running" = "0"]; then
-                # 设置为结束运行,相当于解锁
-                uci set nat6-helper.@daemon_ipv6[0].daemon_running=0
-                uci commit nat6-helper
-                exit 0
-            fi
 
             #用于ping的参数均需获取实时最新值，以便获取修改
             WAN6_NAME=$(uci get nat6-helper.@nat6-helper[0].name)                                     #选定的IPv6上行接口
             interface=$(uci get "network.$WAN6_NAME.device" || uci get "network.$WAN6_NAME.ifname")   #获取选中的ipv6接口的物理接口
-            ping_host=$(uci get nat6-helper.@daemon_ipv6[0].ping_host)                                 #ping主机
-            ping_period=$(uci get nat6-helper.@daemon_ipv6[0].ping_period)                             #ping周期
+            ping_host=$(uci get nat6-helper.@daemon_ipv6[0].ping_host)                                #ping主机
 
             #ping检测
             ping6 -c 3 -I "$interface" "$ping_host" >/dev/null 2>&1
@@ -264,15 +257,32 @@ ipv6_daemon()
                 logger -t nat6-helper "The IPv6 network connectivity on interface $interface is abnormal, and the interface is being restarted"
                 ifdown $WAN6_NAME && ifup $WAN6_NAME >/dev/null 2>&1
             fi
-
-            # 等待指定时间后再次检测
-            sleep "$ping_period" >/dev/null 2>&1
         else
             # 设置为结束运行,相当于解锁
             uci set nat6-helper.@daemon_ipv6[0].daemon_running=0
             uci commit nat6-helper
+            logger -t nat6-helper "The daemon process for IPv6 connectivity on interface $interface has ended"
             exit 0
         fi
+
+        #睡眠ping_period
+        while true; do
+
+            #查看daemon_running是否被关闭按钮强制设置为0，为0相当于锁被没收，退出守护
+            daemon_running=$(uci get nat6-helper.@daemon_ipv6[0].daemon_running)
+            if [ $daemon_running = "0" ]; then
+                logger -t nat6-helper "The daemon process for IPv6 connectivity on interface $interface has ended"
+                exit 0
+            fi
+
+            sleep 1
+
+            # 减少等待时间
+            ping_period=$((ping_period - 1))
+
+            # 如果等待时间用完了，则退出睡眠循环
+            [ $ping_period = "0" ] && break
+        done
     done
 }
 
