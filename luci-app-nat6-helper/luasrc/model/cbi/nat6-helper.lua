@@ -1,6 +1,6 @@
 --简介
 m = Map("nat6-helper", "NAT6 配置助手") 
-m.description = translate("IPv6 路由器做 NAT6，使得路由器下级可以使用 IPv6 协议访问网站。<br />若插件启用失败，请检查路由器是否正常获取到IPv6。")
+m.description = translate("IPv6 路由器做 NAT6，使得路由器下级可以使用 IPv6 协议访问网站。<br />若插件启用失败，请检查路由器是否正常获取到IPv6。<br />未配置防火墙，如有IPv6 p2p需求，请在防火墙手动设置“wan”区域转发“lan”区域")
 
 -- 插件启用状态和nat6运行状态
 status = m:section(TypedSection, "nat6_status", translate("NAT6 Status"))
@@ -28,7 +28,7 @@ name.description = translate("默认为wan6，也可自行设置为有ipv6的接
 init_button = s:option(Button, "init_button", translate("初始化"))
 init_button.inputtitle = translate("一键配置")
 init_button.inputstyle = "apply"
-init_button.description = translate("需要先启用本插件否则点击无效，一键设置ULA、IPv6-DNS和DHCPv6。<br />配置时会重启一次网络，稍等片刻网络恢复。接口获得IPv6网络后会自动配置nat6。")
+init_button.description = translate("特别提醒：请确保勾选选定接口高级设置中的“使用默认网关”，需要先启用本插件否则点击无效，。<br />点击后，一键设置ULA、IPv6-DNS和DHCPv6并开启nat6。<br />配置时会重启一次网络，稍等片刻网络恢复。接口获得IPv6网络后会自动配置nat6。")
 function init_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper set_lan")
     luci.http.write("<script>alert('已发出初始化指令');</script>")
@@ -38,7 +38,7 @@ end
 enable_nat_button = s:option(Button, "enable_nat_button", translate("重启nat6"))
 enable_nat_button.inputtitle = translate("手动重启nat6")
 enable_nat_button.inputstyle = "apply"
-enable_nat_button.description = translate("手动重启nat6，仅仅配置nat6路由转发规则和下级设备nat6流量的IPv6网关。<br />不会改动其他配置，等效于接口启动或者重启时的动作。")
+enable_nat_button.description = translate("手动重启nat6，仅仅配置nat6路由转发规则和下级设备nat6流量的IPv6网关。<br />不会改动其他配置，等效于接口启动或者重启时的动作。<br />提示：如片刻后nat6仍未重启，可能是丢失默认网关，可尝试点击“手动重启WAN6”")
 function enable_nat_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper stop_nat6")
     io.popen("/etc/init.d/nat6-helper start_nat6")
