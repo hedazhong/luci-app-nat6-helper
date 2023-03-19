@@ -28,7 +28,7 @@ name.description = translate("默认为wan6，也可自行设置为有ipv6的接
 init_button = s:option(Button, "init_button", translate("初始化"))
 init_button.inputtitle = translate("一键配置")
 init_button.inputstyle = "apply"
-init_button.description = translate("特别提醒：请确保勾选选定接口高级设置中的“使用默认网关”，需要先启用本插件否则点击无效，。<br />点击后，一键设置ULA、IPv6-DNS和DHCPv6并开启nat6。<br />配置时会重启一次网络，稍等片刻网络恢复。接口获得IPv6网络后会自动配置nat6。")
+init_button.description = translate("特别提醒：请确保勾选选定接口高级设置中的“使用默认网关”，需要先启用本插件否则点击无效。<br />点击后，一键设置ULA、IPv6-DNS和DHCPv6并开启nat6。<br />配置时会重启一次网络，稍等片刻网络恢复。接口获得IPv6网络后会自动配置nat6。")
 function init_button.write(self, section)
     io.popen("/etc/init.d/nat6-helper set_lan")
     luci.http.write("<script>alert('已发出初始化指令');</script>")

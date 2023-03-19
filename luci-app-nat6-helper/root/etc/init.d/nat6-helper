@@ -10,17 +10,8 @@ EXTRA_HELP="set_lan:Setting ULA, IPv6-DNS and DHCPv6
             reset_lan:Resetting ULA, IPv6-DNS and DHCPv6
             ipv6_daemon:ipv6-Daemon"
 
-enable=$(uci get nat6-helper.@nat6-helper[0].enabled)                                     #插件是否启用
-WAN6_NAME=$(uci get nat6-helper.@nat6-helper[0].name)                                     #选定的IPv6上行接口，默认为wan6
-ULA_PREFIX=$(uci get network.globals.ula_prefix)                                          #IPv6 ULA
-
-interface=$(uci get "network.$WAN6_NAME.device" || uci get "network.$WAN6_NAME.ifname")   #获取选中的ipv6接口的物理接口
-last_if=$(ip6tables-save -t nat | grep "v6NAT" | awk '{print $4}' | head -n 1)            #获取之前设置的出口网口
-#gateway=$(ip -6 route | grep "default from 2" | awk '{print $5}')                        #获取当前状态默认IPv6网关
-gateway=$(ip -6 route | grep -i '^default.*via' | grep -i -F "dev $interface" | grep -i -o 'via.*' | cut -d ' ' -f 2 | head -n 1)   #获取网关的更好的写法，对应接口
-last_gw=$(ip -6 route | grep "2000::/3" | awk '{print $3}')                               #之前由脚本设置的IPv6路由的网关地址
-#网络变动后IPv6网关可能会变，以及用户有可能重新选择ipv6网口，所以需要先获取之前脚本设置的ipv6网关，用于组合出删除旧的路由的命令
-#原先的default via命令有可能会冲突，所以改用nat6脚本中的只路由到公网的ip，即2开头的ip
+enable=$(uci get nat6-helper.@nat6-helper[0].enabled)                               #插件是否启用
+WAN6_NAME=$(uci get nat6-helper.@nat6-helper[0].name)                               #选定的IPv6上行接口，默认为wan6
 
 #一键设置函数
 set_lan() 
@@ -29,6 +20,7 @@ set_lan()
     [ $enable = "0" ] && { logger -t nat6-helper "Please enable the nat6-helper plugin before one-key configuration."; exit 0; }
     
     #配置ULA IPv6-DNS DHCPv6
+    ULA_PREFIX=$(uci get network.globals.ula_prefix)                                #IPv6 ULA
     if [ $(echo "$ULA_PREFIX" | grep -c -E "^(dc[0-9a-fA-F]{2}|dd[0-9a-fA-F]{2}|fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
         uci set network.globals.ula_prefix='fd00:6666:6666::/64'                    #不符合要求重设LUA为fd00:6666:6666::/64，可自行修改
     fi
@@ -79,7 +71,16 @@ start_nat6()
     #插件未开启则退出
     [ $enable = "0" ] && exit 0
 
+    #获取选中的ipv6接口的物理接口
+    interface=$(uci get "network.$WAN6_NAME.device" || uci get "network.$WAN6_NAME.ifname")
+
+    #检测IPv6接口对应的物理接口是否存在，如果物理接口不存在，则会写入错误日志并退出脚本
+    if [ -z "$interface" ] || [ ! -e "/sys/class/net/$interface/" ] ; then
+        logger -t nat6-helper "Fatal error: Lookup of $interface interface failed. Were the default interface names changed?" && exit 1
+    fi
+
     #测试指定的IPv6接口是否已经获得带网关的默认IPv6路由，这条路由为ISP-DHCPv6客户端自动配置，存在该路由说明路由器自身已经获得IPv6访问权
+    logger -t NAT6 "Probing IPv6 route"
     PROBE=0
     COUNT=0
     MAX_TRIES=15
@@ -87,20 +88,18 @@ start_nat6()
     do
         if [ $COUNT -gt $MAX_TRIES ]
         then
-            logger -t nat6-helper "Fatal error: No default IPv6 route found (reached retry limit)" && exit 1   #多次尝试后无法获得带网关的默认IPv6路由，失败退出
+            logger -t nat6-helper "Fatal error: No default IPv6 route found (reached retry limit)" && exit 1                            #多次尝试后无法获得带网关的默认IPv6路由，失败退出
         fi
         COUNT=$((COUNT+1))
         sleep $COUNT
-        PROBE=$(ip -6 route | grep -i '^default.*via' | grep -i -F "dev $interface" | grep -i -o 'via.*' | wc -l)   #探测是否具有带网关的默认IPv6路由
+        PROBE=$(ip -6 route | grep -i '^default.*via' | grep -i -F "dev $interface" | grep -i -o 'via.*' | wc -l)                       #探测是否具有带网关的默认IPv6路由
     done
 
     #开始设置nat6
     logger -t nat6-helper "Start configuring nat6"
 
-    #检测IPv6接口对应的物理接口是否存在，如果物理接口不存在，则会写入错误日志并退出脚本
-    if [ -z "$interface" ] || [ ! -e "/sys/class/net/$interface/" ] ; then
-        logger -t nat6-helper "Fatal error: Lookup of $interface interface failed. Were the default interface names changed?" && exit 1
-    fi
+    #gateway=$(ip -6 route | grep "default from 2" | awk '{print $5}')                                                                  #获取当前状态默认IPv6网关
+    gateway=$(ip -6 route | grep -i '^default.*via' | grep -i -F "dev $interface" | grep -i -o 'via.*' | cut -d ' ' -f 2 | head -n 1)   #获取网关的更好的写法，对应接口
 
     #检测IPv6上行接口默认路由网关是否存在，如果默认路由网关不存在，则会写入错误日志并退出脚本
     if [ -z "$gateway" ] ; then
@@ -108,12 +107,13 @@ start_nat6()
     fi
 
     #检测当前ULA是否符合RFC4193定义的ULA前缀范围fc00::/7(增加dc00::/7)
+    ULA_PREFIX=$(uci get network.globals.ula_prefix)                                                                                    #IPv6 ULA
     if [ $(echo "$ULA_PREFIX" | grep -c -E "^(dc[0-9a-fA-F]{2}|dd[0-9a-fA-F]{2}|fc[0-9a-fA-F]{2}|fd[0-9a-fA-F]{2}):([0-9a-fA-F]{0,4}):") -ne 1 ] ; then
         logger -t nat6-helper "Fatal error: IPv6 ULA prefix $ULA_PREFIX seems invalid. Please verify that a prefix is set and valid." && exit 1
     fi
 
     #设置nat6并添加标识 ##Add IPv6 NAT rule to /etc/firewall.user
-    ip6tables -t nat -I POSTROUTING -o $interface -m comment --comment "v6NAT" -j MASQUERADE > /dev/null 2>&1                  #-A最后 -I最前，优先匹配
+    ip6tables -t nat -I POSTROUTING -s $ULA_PREFIX -o $interface -m comment --comment "v6NAT" -j MASQUERADE > /dev/null 2>&1        #-A最后 -I最前，优先匹配
     if ! grep -q "ip6tables -t nat -I POSTROUTING -o $interface -m comment --comment \"v6NAT\" -j MASQUERADE" /etc/firewall.user; then
         echo "ip6tables -t nat -I POSTROUTING -o $interface -m comment --comment \"v6NAT\" -j MASQUERADE" >> /etc/firewall.user
     fi
@@ -161,6 +161,11 @@ start_nat6()
 
 stop_nat6()
 {
+    #网络变动后IPv6网关可能会变，以及用户有可能重新选择ipv6网口，所
+    #以需要先获取之前脚本设置的ipv6网关，组合出删除旧的路由的命令
+    last_if=$(ip6tables-save -t nat | grep "v6NAT" | awk '{print $4}' | head -n 1)            #获取之前设置的出口网口
+    last_gw=$(ip -6 route | grep "2000::/3" | awk '{print $3}')                               #之前由脚本设置的IPv6路由的网关地址
+
     #删除之前在路由表为目的地为IPv6公网的流量设置的路由规则。接口关闭或者清除配置时调用，故不需要校验插件是否启用。
     ip -6 route del "2000::/3" via $last_gw dev $last_if  > /dev/null 2>&1
     
